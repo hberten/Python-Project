@@ -1,21 +1,23 @@
 from tkinter import *
+import json
 
 root = Tk()
 root.configure(background='black')
-term_stringvar = StringVar()
-definition_stringvar = StringVar()
 
 
 class Application(Frame):
+    current_row = 0
+    entry = None
+    dictionary = {}
+
     def __init__(self, master):
         super().__init__(master)
-        self.textbox = Text(master, height=1, width=20)
         self.grid()
         self.create_widgets()
-        pad = 3
-        self._geom = '750x500+0+0'
-        master.geometry('{0}x{1}+0+0'.format(master.winfo_screenwidth() - pad, master.winfo_screenheight() - pad))
-        master.bind('<Escape>', self.toggle_geom)
+        # pad = 20
+        # self._geom = '750x500+0+0'
+        # master.geometry('{0}x{1}+0+0'.format(master.winfo_screenwidth() - pad, master.winfo_screenheight() - pad))
+        # master.bind('<Escape>', self.toggle_geom)
 
     def toggle_geom(self, event):
         geom = self.master.winfo_geometry()
@@ -37,13 +39,7 @@ class Application(Frame):
         self.columnconfigure(1, weight=1)
         self.columnconfigure(2, weight=1)
 
-        Label(self, background='grey', fg='white', text='Term', padx=5).grid(row=0, column=0)
-        Entry(self, textvariable=term_stringvar).grid(row=0, column=1)
-        Label(self, background='grey', fg='white', text='Definition', padx=5).grid(row=0, column=2)
-        Entry(self, textvariable=definition_stringvar).grid(row=0, column=3)
-        save_button = Button(self, background='grey', fg='white', text='Save', padx=5)
-        save_button.configure(command=self.flashcard_save)
-        save_button.grid(row=1, column=0)
+        self.create_row()
 
     def textbox_print(self):
         if self.textbox.get('1.0', END).lower() == 'correct\n':
@@ -51,9 +47,39 @@ class Application(Frame):
         else:
             print('Nope')
 
+    def create_row(self, key = None):
+
+        if 'TermEntry'+str(self.current_row) in self.dictionary:
+            self.dictionary['TermEntry'+str(self.current_row)].unbind('<Key>')
+            self.dictionary['DefinitionEntry'+str(self.current_row)].unbind('<Key>')
+            self.current_row += 1
+
+        Label(self, background='grey', fg='white', text='Term', padx=5).grid(row=self.current_row, column=0)
+
+        term_entry = Entry(self) # creates the term entry box for the line
+        term_entry.bind('<Key>', self.create_row) # binds the create_row function to run when something is typed
+        term_entry.grid(row=self.current_row, column=1)
+        self.dictionary['TermEntry'+str(self.current_row)] = term_entry # places term_entry in the dictionary
+
+        Label(self, background='grey', fg='white', text='Definition', padx=5).grid(row=self.current_row, column=2)
+
+        definition_entry = Entry(self) # creates the definition entry box for the line
+        definition_entry.bind('<Key>', self.create_row)  # binds the create_row function to run when something is typed
+        definition_entry.grid(row=self.current_row, column=3)
+        self.dictionary['DefinitionEntry'+str(self.current_row)] = definition_entry  # places definition_entry in dictionary
+
+        save_button = Button(self, background='grey', fg='white', text='Save', padx=5)
+        save_button.configure(command=self.flashcard_save)
+        save_button.grid(row=self.current_row+1, column=0)
+
     def flashcard_save(self):
-        flashcard_file = open('flashcard_file.txt', 'w')
-        flashcard_file.write(str(term_stringvar.get() + ': ' + definition_stringvar.get()))
+        flashcard_file = open('flashcard_file.json', 'w')
+        current_row = self.current_row
+        term_dictionary = {}
+        for row in range(0, current_row):
+            row = str(row)
+            term_dictionary[self.dictionary['TermEntry'+row].get()] = self.dictionary['DefinitionEntry'+row].get()
+        json.dump(term_dictionary, flashcard_file)
         flashcard_file.close()
 
 
